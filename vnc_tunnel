@@ -17,7 +17,7 @@ if [[ $1 == debug ]]; then
 	set -x
 fi
 
-trap cleanup 2
+trap "cleanup dead" 2
 
 function launch_tunnel() {
 	local port=$1
@@ -91,7 +91,8 @@ function print_fail() {
 }
 
 function cleanup() {
-	printf "Closing VNC ports..."
+	local dead=$1
+	printf "\nClosing VNC ports..."
 	if ! close_firewall; then
 		print_fail
 		echo "Failed to close ports.  Not fatal, but should be checked out."
@@ -107,6 +108,17 @@ function cleanup() {
 		print_ok
 	fi
 
+	if [[ $dead == dead ]]; then
+		exit 1
+	fi
+}
+
+function usage() {
+	cat << EOF
+vnc_tunnel: usage: vnc_tunnel [-h] [-d]
+		-d	Show debug output
+		-h	Don't regenerate the /etc/hosts file
+EOF
 	exit 0
 }
 
@@ -120,7 +132,7 @@ printf "Opening VNC ports..."
 if ! open_firewall; then
 	print_fail
 	echo "Failed to open ports.  Exiting"
-	exit 1
+	cleanup dead
 else
 	print_ok
 fi
@@ -136,7 +148,7 @@ printf "Setting up SSH tunnels..."
 if ! launch_tunnels; then
 	print_fail
 	echo "Failed to set up SSH tunnels.  Exiting"
-	exit 2
+	cleanup dead
 else
 	print_ok
 fi
@@ -157,3 +169,4 @@ while [[ $input != "done" ]]; do
 done
 
 cleanup
+exit 0
