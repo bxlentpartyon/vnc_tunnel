@@ -26,7 +26,7 @@ function launch_tunnel() {
 		verbose="-vvvvv"
 	fi
 
-	ssh $verbose -R *:$port:localhost:$port -N -f root@spectre
+	ssh $verbose -o "ExitOnForwardFailure yes" -R *:$port:localhost:$port -N -f root@spectre
 	return $?
 }
 
@@ -39,6 +39,11 @@ function launch_tunnels() {
 	done
 
 	return 0
+}
+
+function login_tunnel() {
+	ssh -o "ExitOnForwardFailure yes" -R *:6666:localhost:22 -N -f root@spectre
+	return $?
 }
 
 function kill_tunnels() {
@@ -186,17 +191,19 @@ else
 	print_ok
 fi
 
-# For some reason shit is fucked up when you use launch_tunnels.
-# The last ssh tunnel always hangs.  It properly sets up the tunnel,
-# but control never returns to this script.  This works for now.
-#launch_tunnel 5900 || echo "Failed to open port 5900. Exiting." && exit 2 
-#launch_tunnel 5901 || echo "Failed to open port 5901. Exiting." && exit 2
-#launch_tunnel 5800 || echo "Failed to open port 5800. Exiting." && exit 2
-#launch_tunnel 5801 || echo "Failed to open port 5801. Exiting." && exit 2
-printf "Setting up SSH tunnels..."
+printf "Setting up SSH tunnels for VNC... "
 if ! launch_tunnels; then
 	print_fail
-	echo "Failed to set up SSH tunnels.  Exiting"
+	echo "Failed to set up SSH tunnels for VNC.  Exiting."
+	cleanup dead
+else
+	print_ok
+fi
+
+printf "Setting up SSH tunnel for login... "
+if ! login_tunnel; then
+	print_fail
+	echo "Failed to set up login SSH tunnel.  Exiting."
 	cleanup dead
 else
 	print_ok
