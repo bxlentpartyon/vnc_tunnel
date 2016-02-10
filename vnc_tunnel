@@ -1,0 +1,165 @@
+#! /bin/bash
+
+FW_CONFIG="/etc/sysconfig/SuSEfirewall2"
+FW_CONFIG_LINE="FW_CONFIGURATIONS_EXT"
+VNC_HTTPD_REGEX="FW_CONFIGURATIONS_EXT=.*vnc-httpd.*"
+VNC_SERVER_REGEX="FW_CONFIGURATIONS_EXT=.*vnc-server.*"
+
+PORTS="5800 5801 5900 5901"
+
+red="\e[31m"
+green="\e[32m"
+none="\e[39m"
+
+if [[ $1 == debug ]]; then
+	set -x
+fi
+
+trap cleanup 2
+
+function launch_tunnel() {
+	local port=$1
+
+	ssh -R *:$port:localhost:$port -N -f root@spectre
+	local ret=$?
+	echo "Return code $ret"
+
+	if [[ $ret != 0 ]]; then
+		return 1
+	fi
+
+	return 0
+}
+
+function launch_tunnels() {
+	for port in $PORTS; do
+		printf "$port "
+		if ! launch_tunnel $port; then
+			return 1
+		fi
+	done
+
+	return 0
+}
+
+function kill_tunnels() {
+	local pids=$(ps -ef | grep "ssh.*spectre.*" | grep -v grep | awk '{ print $2 }')
+	for pid in $pids; do
+		printf "$pid "
+		kill $pid
+	done
+}
+
+function restart_firewall() {	
+	if ! sudo systemctl restart SuSEfirewall2; then
+		return 1
+	else
+		return 0
+	fi
+}
+
+function open_firewall() {
+	if ! grep -q $VNC_HTTPD_REGEX $FW_CONFIG; then
+		sudo sed -i "s/$FW_CONFIG_LINE=\"\(.*\)\"/$FW_CONFIG_LINE=\"\1 vnc-httpd\"/" $FW_CONFIG
+	fi
+
+	if ! grep -q $VNC_SERVER_REGEX $FW_CONFIG; then
+		sudo sed -i "s/$FW_CONFIG_LINE=\"\(.*\)\"/$FW_CONFIG_LINE=\"\1 vnc-server\"/" $FW_CONFIG
+	fi
+
+	restart_firewall || return 1
+	return 0
+}
+
+function close_firewall() {
+	if grep -q $VNC_HTTPD_REGEX $FW_CONFIG; then
+		sudo sed -i "s/$FW_CONFIG_LINE=\"\(.*\)vnc-httpd\(.*\)\"/$FW_CONFIG_LINE=\"\1 \2\"/" $FW_CONFIG
+	fi
+
+	if grep -q $VNC_SERVER_REGEX $FW_CONFIG; then
+		sudo sed -i "s/$FW_CONFIG_LINE=\"\(.*\)vnc-server\(.*\)\"/$FW_CONFIG_LINE=\"\1 \2\"/" $FW_CONFIG
+	fi
+
+	restart_firewall || return 1
+	return 0
+}
+
+function fix_hosts() {
+	
+}
+
+function print_ok() {
+	printf "${green}OK${none}\n"	
+}
+
+function print_fail() {
+	printf "${red}FAIL${none}\n"
+}
+
+function cleanup() {
+	printf "Closing VNC ports..."
+	if ! close_firewall; then
+		print_fail
+		echo "Failed to close ports.  Not fatal, but should be checked out."
+	else
+		print_ok
+	fi
+
+	printf "Killing SSH tunnel processes..."
+	if ! kill_tunnels; then
+		print_fail
+		echo "Failed to kill the tunnels.  Not fatal, but you might want to reboot"
+	else
+		print_ok
+	fi
+
+	exit 0
+}
+
+ip=""
+while ! echo $ip | grep -Eo '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}'; do
+	printf "Enter IP Address: "
+	read ip
+done
+
+printf "Opening VNC ports..."
+if ! open_firewall; then
+	print_fail
+	echo "Failed to open ports.  Exiting"
+	exit 1
+else
+	print_ok
+fi
+
+# For some reason shit is fucked up when you use launch_tunnels.
+# The last ssh tunnel always hangs.  It properly sets up the tunnel,
+# but control never returns to this script.  This works for now.
+#launch_tunnel 5900 || echo "Failed to open port 5900. Exiting." && exit 2 
+#launch_tunnel 5901 || echo "Failed to open port 5901. Exiting." && exit 2
+#launch_tunnel 5800 || echo "Failed to open port 5800. Exiting." && exit 2
+#launch_tunnel 5801 || echo "Failed to open port 5801. Exiting." && exit 2
+printf "Setting up SSH tunnels..."
+if ! launch_tunnels; then
+	print_fail
+	echo "Failed to set up SSH tunnels.  Exiting"
+	exit 2
+else
+	print_ok
+fi
+
+# there really isn't any error checking here...
+#if ! try_function launch_tunnels "Creating SSH tunnels"; then
+#	echo "Failed to create SSH tunnels.  Exiting"
+#	exit 2
+#fi
+
+# Just in case any error output comes from the ssh commands.
+sleep 2
+
+input=
+while [[ $input != "done" ]]; do
+	printf "Type done to quit: "
+	read input
+done
+
+cleanup
