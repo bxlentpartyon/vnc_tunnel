@@ -123,7 +123,7 @@ function cleanup() {
 		print_ok
 	fi
 
-	printf "\nClosing VNC ports... "
+	printf "Closing VNC ports... "
 	if ! close_firewall; then
 		print_fail
 		echo "Failed to close ports.  Not fatal, but should be checked out."
