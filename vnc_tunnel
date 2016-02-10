@@ -87,9 +87,9 @@ function fix_hosts() {
 	local ip=$1
 	if ! grep -q "$ip.*spectre" /etc/hosts; then
 		sudo sed -i "s/.*spectre/$ip\tspectre/" /etc/hosts
-		printf " fixed "
+		printf "fixed "
 	else
-		printf " nothing to do "
+		printf "nothing to do "
 	fi
 
 	sudo systemctl restart nscd.service || return 1
@@ -106,7 +106,7 @@ function print_fail() {
 
 function cleanup() {
 	local dead=$1
-	printf "\nClosing VNC ports..."
+	printf "\nClosing VNC ports... "
 	if ! close_firewall; then
 		print_fail
 		echo "Failed to close ports.  Not fatal, but should be checked out."
@@ -114,7 +114,7 @@ function cleanup() {
 		print_ok
 	fi
 
-	printf "Killing SSH tunnel processes..."
+	printf "Killing SSH tunnel processes... "
 	if ! kill_tunnels; then
 		print_fail
 		echo "Failed to kill the tunnels.  Not fatal, but you might want to reboot"
@@ -165,7 +165,7 @@ if [[ $SKIP_HOSTS != 1 ]]; then
 		fi
 	done
 
-	printf "Fixing /etc/hosts file..."
+	printf "Fixing /etc/hosts file... "
 	if ! fix_hosts $IP; then
 		print_fail
 		echo "Failed to update /etc/hosts. Exiting"
@@ -177,7 +177,7 @@ else
 	echo "Skipping /etc/hosts update..."
 fi 
 
-printf "Opening VNC ports..."
+printf "Opening VNC ports... "
 if ! open_firewall; then
 	print_fail
 	echo "Failed to open ports.  Exiting"
