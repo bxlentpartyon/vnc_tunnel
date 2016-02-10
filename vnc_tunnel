@@ -114,18 +114,19 @@ function print_fail() {
 
 function cleanup() {
 	local dead=$1
-	printf "\nClosing VNC ports... "
-	if ! close_firewall; then
-		print_fail
-		echo "Failed to close ports.  Not fatal, but should be checked out."
-	else
-		print_ok
-	fi
 
 	printf "Killing SSH tunnel processes... "
 	if ! kill_tunnels; then
 		print_fail
 		echo "Failed to kill the tunnels.  Not fatal, but you might want to reboot"
+	else
+		print_ok
+	fi
+
+	printf "\nClosing VNC ports... "
+	if ! close_firewall; then
+		print_fail
+		echo "Failed to close ports.  Not fatal, but should be checked out."
 	else
 		print_ok
 	fi
