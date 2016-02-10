@@ -5,8 +5,10 @@ FW_CONFIG_LINE="FW_CONFIGURATIONS_EXT"
 VNC_HTTPD_REGEX="FW_CONFIGURATIONS_EXT=.*vnc-httpd.*"
 VNC_SERVER_REGEX="FW_CONFIGURATIONS_EXT=.*vnc-server.*"
 
+# Ports to forward
 PORTS="5800 5801 5900 5901"
 
+# Colors
 red="\e[31m"
 green="\e[32m"
 none="\e[39m"
@@ -19,16 +21,8 @@ trap cleanup 2
 
 function launch_tunnel() {
 	local port=$1
-
 	ssh -R *:$port:localhost:$port -N -f root@spectre
-	local ret=$?
-	echo "Return code $ret"
-
-	if [[ $ret != 0 ]]; then
-		return 1
-	fi
-
-	return 0
+	return $?
 }
 
 function launch_tunnels() {
