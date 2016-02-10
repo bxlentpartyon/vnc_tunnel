@@ -1,0 +1,8 @@
+This is a simple script to port forward the VNC and the SSH login port
+to a remote machine, so that the remote host can perofrm maintenance on
+the local machine.
+
+The motivation here is to have a way to get connected to the machine
+running vnc_tunnel from anywhere, when they might be behind firewalls
+which block the VNC/login ports, or using a public network, where
+traffic to those ports will not reach them.
