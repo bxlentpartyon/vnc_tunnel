@@ -77,12 +77,15 @@ function open_firewall() {
 
 function close_firewall() {
 	if grep -q $VNC_HTTPD_REGEX $FW_CONFIG; then
-		sudo sed -i "s/$FW_CONFIG_LINE=\"\(.*\)vnc-httpd\(.*\)\"/$FW_CONFIG_LINE=\"\1 \2\"/" $FW_CONFIG
+		sudo sed -i "s/$FW_CONFIG_LINE=\"\(.*\)\s*vnc-httpd\(.*\)\"/$FW_CONFIG_LINE=\"\1\2\"/" $FW_CONFIG
 	fi
 
 	if grep -q $VNC_SERVER_REGEX $FW_CONFIG; then
-		sudo sed -i "s/$FW_CONFIG_LINE=\"\(.*\)vnc-server\(.*\)\"/$FW_CONFIG_LINE=\"\1 \2\"/" $FW_CONFIG
+		sudo sed -i "s/$FW_CONFIG_LINE=\"\(.*\)\s*vnc-server\(.*\)\"/$FW_CONFIG_LINE=\"\1\2\"/" $FW_CONFIG
 	fi
+
+	# remove any whitespace that we may have left behind
+	sudo sed -i "s/[[:space:]]*\"$/\"/" $FW_CONFIG
 
 	restart_firewall || return 1
 	return 0
