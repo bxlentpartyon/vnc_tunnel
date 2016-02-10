@@ -91,7 +91,9 @@ function fix_hosts() {
 	else
 		printf " nothing to do "
 	fi
-	return $?
+
+	sudo systemctl restart nscd.service || return 1
+	return 0
 }
 
 function print_ok() {
