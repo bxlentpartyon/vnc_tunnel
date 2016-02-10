@@ -21,7 +21,12 @@ trap "cleanup dead" 2
 
 function launch_tunnel() {
 	local port=$1
-	ssh -R *:$port:localhost:$port -N -f root@spectre
+	local verbose=""
+	if [[ $DEBUG == 1 ]]; then
+		verbose="-vvvvv"
+	fi
+
+	ssh $verbose -R *:$port:localhost:$port -N -f root@spectre
 	return $?
 }
 
