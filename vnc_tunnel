@@ -13,9 +13,9 @@ red="\e[31m"
 green="\e[32m"
 none="\e[39m"
 
-if [[ $1 == debug ]]; then
-	set -x
-fi
+# Switch vars
+DEBUG=0
+SKIP_HOSTS=0
 
 trap "cleanup dead" 2
 
@@ -79,7 +79,11 @@ function close_firewall() {
 }
 
 function fix_hosts() {
-	
+	local ip=$1
+	if ! grep -q "$ip.*spectre" /etc/hosts; then
+		sudo sed -i "s/.*spectre/$ip\tspectre/" /etc/hosts
+	fi
+	return $?
 }
 
 function print_ok() {
@@ -122,11 +126,37 @@ EOF
 	exit 0
 }
 
-ip=""
-while ! echo $ip | grep -Eo '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}'; do
-	printf "Enter IP Address: "
-	read ip
+# Process switches
+OPT="dh"
+while getopts $OPT opt; do
+	case $opt in
+		d)
+		DEBUG=1;;
+		h)
+		SKIP_HOSTS=1;;
+		\?)
+		usage
+	esac
 done
+
+if [[ $DEBUG == 1 ]]; then
+	set -x
+fi
+
+if [[ $SKIP_HOSTS != 1 ]]; then
+	IP=""
+	while ! echo $IP | grep -qEo '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}'; do
+		printf "Enter IP Address: "
+		read IP
+	done
+
+	printf "Fixing /etc/hosts file..."
+	if ! fix_hosts; then
+		fix_hosts $IP
+	fi
+else
+	echo "Skipping /etc/hosts update..."
+fi 
 
 printf "Opening VNC ports..."
 if ! open_firewall; then
